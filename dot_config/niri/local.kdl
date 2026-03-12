@@ -1,0 +1,16 @@
+binds {
+
+    Mod+Shift+T hotkey-overlay-title="Dev Terminal" { 
+        spawn "flatpak" "run" "app.devsuite.Ptyxis" "-s";
+    }
+
+    Mod+Backspace hotkey-overlay-title="Close window" repeat=false { 
+      close-window; 
+    }
+}
+
+input {
+  touchpad {
+    middle-emulation
+  }
+}

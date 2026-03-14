@@ -60,7 +60,11 @@ source $ZSH/oh-my-zsh.sh
 RPROMPT='%n@%m $(containerenv_prompt_info)'
 
 # Preferred editor for local and remote sessions
-export EDITOR='vi'
+if [[ -n "$(command -v nvim)" ]]; then
+  export EDITOR='nvim'
+else
+  export EDITOR='vi'
+fi
 
 # Linuxbrew initialization
 if [ -d "/home/linuxbrew/.linuxbrew" ]; then

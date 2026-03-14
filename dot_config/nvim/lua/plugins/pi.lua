@@ -5,6 +5,9 @@ return {
       -- Auto-connect on startup
       auto_connect = vim.fn.executable("pi") == 1,
 
+      -- Start with the panel hidden
+      start_hidden = true,
+
       -- Require approval before applying changes
       approval_mode = true,
 

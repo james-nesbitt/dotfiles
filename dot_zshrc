@@ -1,8 +1,39 @@
+# XDG Base Directory Specification
+export XDG_CONFIG_HOME="$HOME/.config"
+export XDG_DATA_HOME="$HOME/.local/share"
+export XDG_CACHE_HOME="$HOME/.cache"
+export XDG_STATE_HOME="$HOME/.local/state"
+
 # Path to your Oh My Zsh installation.
-export ZSH="$HOME/.oh-my-zsh"
+export ZSH="$XDG_DATA_HOME/oh-my-zsh"
+
+# Zsh Completion Cache XDG
+export ZSH_COMPDUMP="$XDG_CACHE_HOME/zsh/zcompdump-$HOST-$ZSH_VERSION"
+mkdir -p "$XDG_CACHE_HOME/zsh"
+
+# NPM & Node XDG Setup
+export NPM_CONFIG_USERCONFIG="$XDG_CONFIG_HOME/npm/npmrc"
+export NODE_REPL_HISTORY="$XDG_STATE_HOME/node_repl_history"
+export NODE_PATH="$HOME/.local/lib/node_modules:$NODE_PATH"
+
+# Rust/Cargo XDG Setup
+export CARGO_HOME="$XDG_DATA_HOME/cargo"
+export RUSTUP_HOME="$XDG_DATA_HOME/rustup"
+
+# Go XDG Setup
+export GOPATH="$XDG_DATA_HOME/go"
+
+# Bun XDG Setup
+export BUN_INSTALL="$XDG_DATA_HOME/bun"
+
+# Docker XDG Setup
+export DOCKER_CONFIG="$XDG_CONFIG_HOME/docker"
+
+# Ollama XDG Setup
+export OLLAMA_MODELS="$XDG_DATA_HOME/ollama/models"
 
 # Update PATH
-for dir in "$HOME/.cargo/bin" "$HOME/node_modules/.bin"; do
+for dir in "$BUN_INSTALL/bin" "$GOPATH/bin" "$CARGO_HOME/bin" "$HOME/.local/bin"; do
   if [ -d "$dir" ]; then
     export PATH="$dir:$PATH"
   fi
@@ -11,8 +42,17 @@ done
 # Set name of the theme to load
 ZSH_THEME="robbyrussell"
 
-# Which plugins would you like to load?
-plugins=(containerenv distrobox git)
+# Recommended Plugins for your stack
+available_plugins=(containerenv distrobox git)
+
+# Conditionally add plugins if the associated binary is found
+[[ -n "$(command -v cargo)" ]]     && available_plugins+=(rust)
+[[ -n "$(command -v go)" ]]        && available_plugins+=(golang)
+[[ -n "$(command -v npm)" ]]       && available_plugins+=(npm node)
+[[ -n "$(command -v docker)" ]]    && available_plugins+=(docker docker-compose)
+[[ -n "$(command -v terraform)" ]] && available_plugins+=(terraform)
+
+plugins=($available_plugins)
 
 source $ZSH/oh-my-zsh.sh
 

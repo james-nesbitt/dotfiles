@@ -70,3 +70,15 @@ fi
 if [ -d "/home/linuxbrew/.linuxbrew" ]; then
   eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv zsh)"
 fi
+
+# LM Studio XDG
+export LMSTUDIO_HOME="$XDG_DATA_HOME/lmstudio"
+
+# n8n XDG
+export N8N_USER_FOLDER="$XDG_DATA_HOME/n8n"
+
+# RedHat XDG
+export REDHAT_HOME="$XDG_CONFIG_HOME/redhat"
+
+# Vim State XDG
+export VIMINIT='set viminfofile=$XDG_STATE_HOME/viminfo | source $MYVIMRC'

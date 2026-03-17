@@ -1,7 +1,7 @@
 binds {
 
-    Mod+Shift+T hotkey-overlay-title="Dev Terminal" { 
-        spawn "flatpak" "run" "app.devsuite.Ptyxis" "-s";
+    Mod+D hotkey-overlay-title="Dev Distrobox" { 
+        spawn "xdg-terminal-exec" "distrobox" "enter" "dev";
     }
 
     Mod+Backspace hotkey-overlay-title="Close window" repeat=false { 

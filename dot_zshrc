@@ -83,12 +83,10 @@ export REDHAT_HOME="$XDG_CONFIG_HOME/redhat"
 # Vim State XDG
 if [[ -f "$HOME/.vimrc" ]]; then
     export MYVIMRC="$HOME/.vimrc"
-elif [[ -f "$XDG_CONFIG_HOME/nvim/init.lua" ]]; then
-    export MYVIMRC="$XDG_CONFIG_HOME/nvim/init.lua"
-elif [[ -f "$XDG_CONFIG_HOME/nvim/init.vim" ]]; then
-    export MYVIMRC="$XDG_CONFIG_HOME/nvim/init.vim"
+elif [[ -f "$XDG_CONFIG_HOME/vim/vimrc" ]]; then
+    export MYVIMRC="$XDG_CONFIG_HOME/vim/vimrc"
 fi
 
 if [[ -n "$MYVIMRC" ]]; then
-    export VIMINIT='set viminfofile=$XDG_STATE_HOME/viminfo | source $MYVIMRC'
+    export VIMINIT="set viminfofile=$XDG_STATE_HOME/viminfo | source $MYVIMRC"
 fi

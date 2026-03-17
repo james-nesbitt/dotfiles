@@ -81,10 +81,10 @@ export N8N_USER_FOLDER="$XDG_DATA_HOME/n8n"
 export REDHAT_HOME="$XDG_CONFIG_HOME/redhat"
 
 # Vim State XDG
-if [[ -f "$HOME/.vimrc" ]]; then
-    export MYVIMRC="$HOME/.vimrc"
-elif [[ -f "$XDG_CONFIG_HOME/vim/vimrc" ]]; then
+if [[ -f "$XDG_CONFIG_HOME/vim/vimrc" ]]; then
     export MYVIMRC="$XDG_CONFIG_HOME/vim/vimrc"
+elif [[ -f "$HOME/.vimrc" ]]; then
+    export MYVIMRC="$HOME/.vimrc"
 fi
 
 if [[ -n "$MYVIMRC" ]]; then

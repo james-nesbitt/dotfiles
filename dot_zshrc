@@ -81,4 +81,14 @@ export N8N_USER_FOLDER="$XDG_DATA_HOME/n8n"
 export REDHAT_HOME="$XDG_CONFIG_HOME/redhat"
 
 # Vim State XDG
-export VIMINIT='set viminfofile=$XDG_STATE_HOME/viminfo | source $MYVIMRC'
+if [[ -f "$HOME/.vimrc" ]]; then
+    export MYVIMRC="$HOME/.vimrc"
+elif [[ -f "$XDG_CONFIG_HOME/nvim/init.lua" ]]; then
+    export MYVIMRC="$XDG_CONFIG_HOME/nvim/init.lua"
+elif [[ -f "$XDG_CONFIG_HOME/nvim/init.vim" ]]; then
+    export MYVIMRC="$XDG_CONFIG_HOME/nvim/init.vim"
+fi
+
+if [[ -n "$MYVIMRC" ]]; then
+    export VIMINIT='set viminfofile=$XDG_STATE_HOME/viminfo | source $MYVIMRC'
+fi

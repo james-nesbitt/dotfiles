@@ -11,6 +11,8 @@ binds {
 
 input {
   touchpad {
+    dwt
+    tap
     middle-emulation
   }
 }

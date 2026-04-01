@@ -24,7 +24,8 @@ export RUSTUP_HOME="$XDG_DATA_HOME/rustup"
 export GOPATH="$XDG_DATA_HOME/go"
 
 # Bun XDG Setup
-export BUN_INSTALL="$XDG_DATA_HOME/bun"
+export BUN_INSTALL="$HOME/.local/share/bun"
+[ -s "$BUN_INSTALL/_bun" ] && source "$BUN_INSTALL/_bun"
 
 # Docker XDG Setup
 export DOCKER_CONFIG="$XDG_CONFIG_HOME/docker"
@@ -46,6 +47,7 @@ ZSH_THEME="robbyrussell"
 available_plugins=(containerenv distrobox git)
 
 # Conditionally add plugins if the associated binary is found
+[[ -n "$(command -v bun)" ]]     && available_plugins+=(bun)
 [[ -n "$(command -v cargo)" ]]     && available_plugins+=(rust)
 [[ -n "$(command -v go)" ]]        && available_plugins+=(golang)
 [[ -n "$(command -v npm)" ]]       && available_plugins+=(npm node)

@@ -1,0 +1,21 @@
+[tools]
+node = "lts"
+go = "latest"
+rust = "stable"
+bun = "latest"
+neovim = "latest"
+jq = "latest"
+yq = "latest"
+uv = "latest"
+terraform = "latest"
+packer = "latest"
+helm = "latest"
+kubectl = "latest"
+ollama = "latest"
+nerdctl = "latest"
+github-cli = "latest"
+just = "latest"
+aws-cli = { version = "latest", symlink_bins = "true" }
+gcloud = "latest"
+azure-cli = { version = "latest", uvx_args = "--prerelease=allow" }
+chezmoi = "latest"

@@ -1,0 +1,44 @@
+modelRoles: 
+  default: claude-sonnet-4-6:low
+  smol: anthropic/claude-haiku-4-5:low
+  plan: anthropic/claude-opus-4-6:high
+lastChangelogVersion: 15.2.4
+memories: 
+  enabled: true
+  minRolloutIdleHours: 6
+  maxRolloutAgeDays: 30
+  summaryInjectionTokenLimit: 5000
+disabledExtensions: 
+  - rule:kairos-mirantis
+hideThinkingBlock: false
+todo: 
+  eager: true
+grep: 
+  contextBefore: 1
+  contextAfter: 1
+inspect_image: 
+  enabled: true
+checkpoint: 
+  enabled: true
+async: 
+  enabled: true
+mcp: 
+  discoveryMode: true
+task: 
+  isolation: 
+    mode: rcopy
+    merge: patch
+    commits: ai
+  maxConcurrency: 8
+  eager: false
+secrets: 
+  enabled: true
+readLineNumbers: true
+lsp: 
+  diagnosticsOnEdit: true
+python: 
+  kernelMode: session
+  sharedGateway: true
+steeringMode: all
+memory: 
+  backend: local

@@ -11,6 +11,11 @@ export ZSH="$XDG_DATA_HOME/oh-my-zsh"
 export ZSH_COMPDUMP="$XDG_CACHE_HOME/zsh/zcompdump-$HOST-$ZSH_VERSION"
 mkdir -p "$XDG_CACHE_HOME/zsh"
 
+# mise — activate early so mise-managed tools are on PATH for detection below
+if command -v mise &>/dev/null; then
+  eval "$(mise activate zsh)"
+fi
+
 # ── Tool detection ────────────────────────────────────────────────────────────
 # Each block: detect → set env vars → extend PATH → register oh-my-zsh plugin
 
@@ -44,6 +49,7 @@ if [ -d "$HOME/.local/share/bun" ] || command -v bun &>/dev/null; then
   export BUN_INSTALL="$HOME/.local/share/bun"
   [ -s "$BUN_INSTALL/_bun" ] && source "$BUN_INSTALL/_bun"
   [ -d "$BUN_INSTALL/bin" ] && export PATH="$BUN_INSTALL/bin:$PATH"
+  [ -d "$XDG_CACHE_HOME/.bun/bin" ] && export PATH="$XDG_CACHE_HOME/.bun/bin:$PATH"
   available_plugins+=(bun)
 fi
 
@@ -101,11 +107,6 @@ fi
 # Linuxbrew
 if [ -d "/home/linuxbrew/.linuxbrew" ]; then
   eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv zsh)"
-fi
-
-# mise
-if command -v mise &>/dev/null; then
-  eval "$(mise activate zsh)"
 fi
 
 # GPG agent

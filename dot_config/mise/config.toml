@@ -19,3 +19,9 @@ aws-cli = { version = "latest", symlink_bins = "true" }
 gcloud = "latest"
 azure-cli = { version = "latest", uvx_args = "--prerelease=allow" }
 chezmoi = "latest"
+golangci-lint = "latest"
+syft = "latest"
+grype = "latest"
+rust-analyzer = "latest"
+gemini-cli = "latest"
+pi = "latest"

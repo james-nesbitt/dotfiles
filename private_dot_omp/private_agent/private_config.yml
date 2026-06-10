@@ -1,10 +1,8 @@
 modelRoles: 
-  default: claude-sonnet-4-6:low
+  default: anthropic/claude-sonnet-4-6:low
   smol: anthropic/claude-haiku-4-5:low
-  plan: anthropic/claude-opus-4-6:high
-lastChangelogVersion: 15.2.4
+  plan: anthropic/claude-opus-4-8:high
 memories: 
-  enabled: true
   minRolloutIdleHours: 6
   maxRolloutAgeDays: 30
   summaryInjectionTokenLimit: 5000
@@ -41,4 +39,17 @@ python:
   sharedGateway: true
 steeringMode: all
 memory: 
-  backend: local
+  backend: mnemopi
+mnemopi: 
+  scoping: per-project-tagged
+  noEmbeddings: true
+  llmMode: smol
+symbolPreset: nerd
+theme: 
+  dark: titanium
+setupVersion: 1
+providers: 
+  tinyModel: lfm2-350m
+  memoryModel: qwen3-1.7b
+  autoThinkingModel: qwen3-1.7b
+defaultThinkingLevel: medium

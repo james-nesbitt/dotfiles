@@ -1,0 +1,12 @@
+{
+  "extras": [
+    "lazyvim.plugins.extras.editor.aerial",
+    "lazyvim.plugins.extras.editor.navic",
+    "lazyvim.plugins.extras.ui.treesitter-context"
+  ],
+  "install_version": 8,
+  "news": {
+    "NEWS.md": "11866"
+  },
+  "version": 8
+}

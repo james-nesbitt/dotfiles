@@ -11,74 +11,111 @@ export ZSH="$XDG_DATA_HOME/oh-my-zsh"
 export ZSH_COMPDUMP="$XDG_CACHE_HOME/zsh/zcompdump-$HOST-$ZSH_VERSION"
 mkdir -p "$XDG_CACHE_HOME/zsh"
 
-# NPM & Node XDG Setup
-export NPM_CONFIG_USERCONFIG="$XDG_CONFIG_HOME/npm/npmrc"
-export NODE_REPL_HISTORY="$XDG_STATE_HOME/node_repl_history"
-export NODE_PATH="$HOME/.local/lib/node_modules:$NODE_PATH"
+# mise — activate early so mise-managed tools are on PATH for detection below
+if command -v mise &>/dev/null; then
+  eval "$(mise activate zsh)"
+fi
 
-# Rust/Cargo XDG Setup
-export CARGO_HOME="$XDG_DATA_HOME/cargo"
-export RUSTUP_HOME="$XDG_DATA_HOME/rustup"
+# ── Tool detection ────────────────────────────────────────────────────────────
+# Each block: detect → set env vars → extend PATH → register oh-my-zsh plugin
 
-# Go XDG Setup
-export GOPATH="$XDG_DATA_HOME/go"
-
-# Bun XDG Setup
-export BUN_INSTALL="$HOME/.local/share/bun"
-[ -s "$BUN_INSTALL/_bun" ] && source "$BUN_INSTALL/_bun"
-
-# Docker XDG Setup
-export DOCKER_CONFIG="$XDG_CONFIG_HOME/docker"
-
-# Ollama XDG Setup
-export OLLAMA_MODELS="$XDG_DATA_HOME/ollama/models"
-
-# Update PATH
-for dir in "$BUN_INSTALL/bin" "$GOPATH/bin" "$CARGO_HOME/bin" "$HOME/.local/bin"; do
-  if [ -d "$dir" ]; then
-    export PATH="$dir:$PATH"
-  fi
-done
-
-# Set name of the theme to load
-ZSH_THEME="robbyrussell"
-
-# Recommended Plugins for your stack
 available_plugins=(containerenv distrobox git)
 
-# Conditionally add plugins if the associated binary is found
-[[ -n "$(command -v bun)" ]]     && available_plugins+=(bun)
-[[ -n "$(command -v cargo)" ]]     && available_plugins+=(rust)
-[[ -n "$(command -v go)" ]]        && available_plugins+=(golang)
-[[ -n "$(command -v npm)" ]]       && available_plugins+=(npm node)
-[[ -n "$(command -v docker)" ]]    && available_plugins+=(docker docker-compose)
-[[ -n "$(command -v terraform)" ]] && available_plugins+=(terraform)
+# Node / NPM
+if [ -d "$XDG_DATA_HOME/mise/installs/node" ] || command -v node &>/dev/null; then
+  export NPM_CONFIG_USERCONFIG="$XDG_CONFIG_HOME/npm/npmrc"
+  export NODE_REPL_HISTORY="$XDG_STATE_HOME/node_repl_history"
+  [ -d "$HOME/.local/lib/node_modules" ] && export NODE_PATH="$HOME/.local/lib/node_modules:$NODE_PATH"
+  available_plugins+=(npm node)
+fi
 
+# Rust / Cargo
+if [ -d "$XDG_DATA_HOME/mise/installs/rust" ] || command -v cargo &>/dev/null; then
+  export CARGO_HOME="$XDG_DATA_HOME/cargo"
+  export RUSTUP_HOME="$XDG_DATA_HOME/rustup"
+  [ -d "$CARGO_HOME/bin" ] && export PATH="$CARGO_HOME/bin:$PATH"
+  available_plugins+=(rust)
+fi
+
+# Go
+if [ -d "$XDG_DATA_HOME/mise/installs/go" ] || command -v go &>/dev/null; then
+  export GOPATH="$XDG_DATA_HOME/go"
+  [ -d "$GOPATH/bin" ] && export PATH="$GOPATH/bin:$PATH"
+  available_plugins+=(golang)
+fi
+
+# Bun
+if [ -d "$HOME/.local/share/bun" ] || command -v bun &>/dev/null; then
+  export BUN_INSTALL="$HOME/.local/share/bun"
+  [ -s "$BUN_INSTALL/_bun" ] && source "$BUN_INSTALL/_bun"
+  [ -d "$BUN_INSTALL/bin" ] && export PATH="$BUN_INSTALL/bin:$PATH"
+  [ -d "$XDG_CACHE_HOME/.bun/bin" ] && export PATH="$XDG_CACHE_HOME/.bun/bin:$PATH"
+  available_plugins+=(bun)
+fi
+
+# Docker
+if command -v docker &>/dev/null; then
+  export DOCKER_CONFIG="$XDG_CONFIG_HOME/docker"
+  available_plugins+=(docker docker-compose)
+fi
+
+# Terraform
+if [ -d "$XDG_DATA_HOME/mise/installs/terraform" ] || command -v terraform &>/dev/null; then
+  available_plugins+=(terraform)
+fi
+
+# Ollama
+if [ -d "$XDG_DATA_HOME/ollama" ] || command -v ollama &>/dev/null; then
+  export OLLAMA_MODELS="$XDG_DATA_HOME/ollama/models"
+fi
+
+# LM Studio
+if [ -d "$XDG_DATA_HOME/lmstudio" ]; then
+  export LMSTUDIO_HOME="$XDG_DATA_HOME/lmstudio"
+fi
+
+# n8n
+if command -v n8n &>/dev/null; then
+  export N8N_USER_FOLDER="$XDG_DATA_HOME/n8n"
+fi
+
+# RedHat tooling
+if [ -f /etc/redhat-release ] || command -v rhc &>/dev/null; then
+  export REDHAT_HOME="$XDG_CONFIG_HOME/redhat"
+fi
+
+# ~/.local/bin — always present
+[ -d "$HOME/.local/bin" ] && export PATH="$HOME/.local/bin:$PATH"
+
+# ── Oh My Zsh ─────────────────────────────────────────────────────────────────
+
+ZSH_THEME="robbyrussell"
 plugins=($available_plugins)
 
 source $ZSH/oh-my-zsh.sh
 
-# User configuration
+# ── User configuration ────────────────────────────────────────────────────────
+
 RPROMPT='%n@%m $(containerenv_prompt_info)'
 
-# Preferred editor for local and remote sessions
-if [[ -n "$(command -v nvim)" ]]; then
+if command -v nvim &>/dev/null; then
   export EDITOR='nvim'
 else
   export EDITOR='vi'
 fi
 
-# Linuxbrew initialization
+# Linuxbrew
 if [ -d "/home/linuxbrew/.linuxbrew" ]; then
   eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv zsh)"
 fi
 
-# LM Studio XDG
-export LMSTUDIO_HOME="$XDG_DATA_HOME/lmstudio"
+# GPG agent
+if command -v gpg &>/dev/null; then
+  export GPG_TTY=$(tty)
+  command -v gpg-connect-agent &>/dev/null && gpg-connect-agent updatestartuptty /bye >/dev/null 2>&1
+fi
 
-# n8n XDG
-export N8N_USER_FOLDER="$XDG_DATA_HOME/n8n"
-
-# RedHat XDG
-export REDHAT_HOME="$XDG_CONFIG_HOME/redhat"
-
+# omp shell completions
+if command -v bun &>/dev/null && command -v omp &>/dev/null; then
+  source <(omp completions zsh)
+fi

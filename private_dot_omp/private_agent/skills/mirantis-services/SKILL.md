@@ -97,6 +97,18 @@ Single instance. Wrapper: `~/Documents/Mirantis/bin/mirantis-jira`
 ~/Documents/Mirantis/bin/mirantis-jira /rest/api/3/PATH [curl-options...]
 ```
 
+### Avoid batch ticket creation
+
+**Do NOT create JIRA tickets in fast batches (e.g. a loop or a script firing many POSTs).** Batched creation has caused duplicate tickets:
+- A long-running batch can time out or be interrupted mid-run, then get re-run — recreating the tickets it already made.
+- The API gives no idempotency guard, so re-runs silently produce duplicates with identical summaries.
+
+Instead:
+- Create tickets **one at a time**, confirming each `key` in the response before moving on.
+- After a multi-ticket creation session, **sweep the created key range** (e.g. `PRODENG-3539`..`PRODENG-3558`) and group by summary to detect duplicates.
+- Never re-run a creation command that may have partially succeeded without first checking what already exists.
+- **Closing, transitioning, or deleting tickets requires explicit user approval** — never decide this autonomously.
+
 ### Common operations
 
 ```bash

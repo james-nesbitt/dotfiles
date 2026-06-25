@@ -1,7 +1,7 @@
 ---
 name: mirantis-services
-description: Access Mirantis internal services — JIRA, Confluence, Jenkins, GitLab, Okta, GitHub, Aikido. Use when interacting with any Mirantis service API or when the user asks to query, create, or update resources in those systems.
-tags: [mirantis, jira, confluence, jenkins, gitlab, okta, github, aikido]
+description: Access Mirantis internal services — JIRA, Confluence, Jenkins, GitLab, Harbor, Okta, GitHub, Aikido. Use when interacting with any Mirantis service API or when the user asks to query, create, or update resources in those systems.
+tags: [mirantis, jira, confluence, jenkins, gitlab, harbor, okta, github, aikido]
 ---
 
 # Mirantis Services
@@ -141,9 +141,34 @@ Single instance. Wrapper: `~/Documents/Mirantis/bin/mirantis-jira`
 
 Single instance. Wrapper: `~/Documents/Mirantis/bin/mirantis-confluence`
 
+Credential: `mirantis/atlassian` (shared with JIRA).
+
 ```bash
 ~/Documents/Mirantis/bin/mirantis-confluence /wiki/rest/api/PATH [curl-options...]
 ```
+
+### Default space
+
+**Always use `PRODENG` as the default Confluence space** unless the user explicitly specifies otherwise.
+- PRODENG space key: `PRODENG`
+- PRODENG homepage ID: `1901003000`
+- PRODENG space URL: `https://mirantis.jira.com/wiki/spaces/PRODENG`
+
+When creating a page without an explicit parent, use the PRODENG homepage as the ancestor:
+```json
+{"ancestors": [{"id": "1901003000"}]}
+```
+
+### Known behaviours and constraints
+
+- **The wrapper already sets `Content-Type: application/json`** — do NOT pass `-H 'Content-Type: ...'` as an extra argument; it conflicts and causes 400 errors.
+- **For POST/PUT with a body**, always write the payload to a temp file and pass `--data-binary @/tmp/file.json`. Inline `-d '{...}'` with complex JSON is unreliable.
+- **`text~` CQL search does not work** on this instance — use title-based or direct ID lookups instead.
+- **Cannot move pages between spaces** without space admin rights — create in the correct space from the start.
+- **Cannot delete pages** without space admin rights — if a page lands in the wrong place, update its title to `[DELETE] ...`, set the body to a redirect note pointing at the correct page, and ask the user to manually trash it.
+- **Page creation response may return `space: null`** even on success — confirm by fetching the page by ID.
+- **Version number for updates must be `current + 1`** — always fetch the current version before a PUT.
+- **Special Unicode characters in titles** (em dashes, emoji) can cause 400 errors — use ASCII hyphens in page titles.
 
 ### Common operations
 
@@ -154,43 +179,35 @@ Single instance. Wrapper: `~/Documents/Mirantis/bin/mirantis-confluence`
 # Get a page with body expanded
 ~/Documents/Mirantis/bin/mirantis-confluence '/wiki/rest/api/content/12345?expand=body.storage,version'
 
-# Search pages
-~/Documents/Mirantis/bin/mirantis-confluence '/wiki/rest/api/content/search?cql=space=ENG+AND+title~"deploy"'
-
 # List pages in a space
-~/Documents/Mirantis/bin/mirantis-confluence '/wiki/rest/api/content?spaceKey=ENG&type=page&limit=25'
+~/Documents/Mirantis/bin/mirantis-confluence '/wiki/rest/api/content?spaceKey=PRODENG&type=page&limit=25'
 
-# Create a page
-~/Documents/Mirantis/bin/mirantis-confluence /wiki/rest/api/content \
-  -X POST \
-  -d '{
-    "type": "page",
-    "title": "New Page",
-    "space": {"key": "ENG"},
-    "body": {
-      "storage": {
-        "value": "<p>Content here</p>",
-        "representation": "storage"
-      }
-    }
-  }'
+# Get space homepage ID
+~/Documents/Mirantis/bin/mirantis-confluence '/wiki/rest/api/space/PRODENG?expand=homepage'
+
+# Create a page (write payload to file — do NOT use inline -d for complex JSON)
+cat > /tmp/page.json << 'EOF'
+{
+  "type": "page",
+  "title": "New Page",
+  "space": {"key": "PRODENG"},
+  "ancestors": [{"id": "1901003000"}],
+  "body": {"storage": {"value": "<p>Content here</p>", "representation": "storage"}}
+}
+EOF
+~/Documents/Mirantis/bin/mirantis-confluence /wiki/rest/api/content -X POST --data-binary @/tmp/page.json
 
 # Update a page (version number must be current+1)
-~/Documents/Mirantis/bin/mirantis-confluence /wiki/rest/api/content/12345 \
-  -X PUT \
-  -d '{
-    "type": "page",
-    "title": "Updated Title",
-    "version": {"number": 3},
-    "body": {
-      "storage": {
-        "value": "<p>Updated content</p>",
-        "representation": "storage"
-      }
-    }
-  }'
+cat > /tmp/update.json << 'EOF'
+{
+  "type": "page",
+  "title": "Updated Title",
+  "version": {"number": 3},
+  "body": {"storage": {"value": "<p>Updated content</p>", "representation": "storage"}}
+}
+EOF
+~/Documents/Mirantis/bin/mirantis-confluence /wiki/rest/api/content/12345 -X PUT --data-binary @/tmp/update.json
 ```
-
 ---
 
 ## Jenkins
@@ -293,6 +310,86 @@ Single instance. Wrapper: `~/Documents/Mirantis/bin/mirantis-gitlab`
 
 ---
 
+## Harbor
+
+Multiple registries. Wrapper: `~/Documents/Mirantis/bin/mirantis-harbor <registry>`
+
+The `<registry>` argument maps to a pass entry at `mirantis/harbor/<registry>`.
+Authentication is HTTP Basic (username + CLI secret). The CLI secret is found in
+Harbor UI → User Profile → CLI secret.
+
+```bash
+~/Documents/Mirantis/bin/mirantis-harbor <registry> /api/v2.0/PATH [curl-options...]
+```
+
+### List configured registries
+
+```bash
+PASSWORD_STORE_DIR=~/Documents/Mirantis/.password-store pass ls mirantis/harbor
+```
+
+### Common operations
+
+```bash
+# List all projects
+~/Documents/Mirantis/bin/mirantis-harbor <registry> /api/v2.0/projects
+
+# Get a project
+~/Documents/Mirantis/bin/mirantis-harbor <registry> /api/v2.0/projects/myproject
+
+# List repositories in a project
+~/Documents/Mirantis/bin/mirantis-harbor <registry> '/api/v2.0/projects/myproject/repositories?page_size=50'
+
+# List artifacts (tags) for a repository
+~/Documents/Mirantis/bin/mirantis-harbor <registry> \
+  '/api/v2.0/projects/myproject/repositories/myrepo/artifacts?with_tag=true&page_size=50'
+
+# Get a specific artifact by digest or tag
+~/Documents/Mirantis/bin/mirantis-harbor <registry> \
+  '/api/v2.0/projects/myproject/repositories/myrepo/artifacts/sha256:abc123'
+
+# Delete an artifact
+~/Documents/Mirantis/bin/mirantis-harbor <registry> \
+  '/api/v2.0/projects/myproject/repositories/myrepo/artifacts/sha256:abc123' -X DELETE
+
+# List tags on an artifact
+~/Documents/Mirantis/bin/mirantis-harbor <registry> \
+  '/api/v2.0/projects/myproject/repositories/myrepo/artifacts/sha256:abc123/tags'
+
+# Delete a tag
+~/Documents/Mirantis/bin/mirantis-harbor <registry> \
+  '/api/v2.0/projects/myproject/repositories/myrepo/artifacts/sha256:abc123/tags/v1.2.3' -X DELETE
+
+# Search across all projects
+~/Documents/Mirantis/bin/mirantis-harbor <registry> '/api/v2.0/search?q=myimage'
+
+# Get system info
+~/Documents/Mirantis/bin/mirantis-harbor <registry> /api/v2.0/systeminfo
+
+# List replication rules
+~/Documents/Mirantis/bin/mirantis-harbor <registry> /api/v2.0/replication/policies
+
+# Trigger a replication execution
+~/Documents/Mirantis/bin/mirantis-harbor <registry> /api/v2.0/replication/executions \
+  -X POST -d '{"policy_id": 1}'
+```
+
+### Add a new registry
+
+```bash
+PASSWORD_STORE_DIR=~/Documents/Mirantis/.password-store pass insert --multiline mirantis/harbor/<registry-name>
+```
+
+Entry format (first line is the CLI secret):
+```
+<cli-secret>
+username: jnesbitt
+url: https://<registry-hostname>
+```
+
+---
+
+
 ## GitHub
 
 Multiple organizations. Authentication is managed by the `gh` CLI, which
@@ -341,6 +438,7 @@ PASSWORD_STORE_DIR=~/Documents/Mirantis/.password-store pass edit mirantis/confl
 PASSWORD_STORE_DIR=~/Documents/Mirantis/.password-store pass edit mirantis/gitlab
 PASSWORD_STORE_DIR=~/Documents/Mirantis/.password-store pass edit mirantis/okta
 PASSWORD_STORE_DIR=~/Documents/Mirantis/.password-store pass edit mirantis/jenkins/tools
+PASSWORD_STORE_DIR=~/Documents/Mirantis/.password-store pass edit mirantis/harbor/<registry-name>
 PASSWORD_STORE_DIR=~/Documents/Mirantis/.password-store pass edit mirantis/aikido
 ```
 

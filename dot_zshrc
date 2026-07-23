@@ -92,6 +92,15 @@ fi
 ZSH_THEME="robbyrussell"
 plugins=($available_plugins)
 
+# oh-my-zsh always calls `compinit -i`/`-u`, doing a full fpath scan + ~800
+# function compdef replay every shell start (~1.3s measured 2026-07-23).
+# Force the fast `-C` path instead: oh-my-zsh already deletes
+# $ZSH_COMPDUMP above when its fpath/revision metadata is stale, so -C
+# safely falls back to a full rebuild automatically whenever the dump is
+# missing/invalid. Revert: delete these 3 lines, restore bare `source $ZSH/oh-my-zsh.sh`.
+autoload -Uz +X compinit
+functions[_real_compinit]=$functions[compinit]
+compinit() { _real_compinit -C -d "$ZSH_COMPDUMP" }
 source $ZSH/oh-my-zsh.sh
 
 # ── User configuration ────────────────────────────────────────────────────────
@@ -116,6 +125,17 @@ if command -v gpg &>/dev/null; then
 fi
 
 # omp shell completions
+# `omp completions zsh` forks the omp CLI and takes ~4.6s by itself
+# (measured 2026-07-23) — the dominant cost in this file. Cache its output
+# and only regenerate when the omp binary itself changes.
+# Revert: delete this block, restore `source <(omp completions zsh)`.
 if command -v bun &>/dev/null && command -v omp &>/dev/null; then
-  source <(omp completions zsh)
+  _omp_comp_cache="$XDG_CACHE_HOME/omp/completions.zsh"
+  _omp_bin="$(command -v omp)"
+  if [[ ! -s "$_omp_comp_cache" || "$_omp_bin" -nt "$_omp_comp_cache" ]]; then
+    mkdir -p "${_omp_comp_cache:h}"
+    omp completions zsh >| "$_omp_comp_cache" 2>/dev/null
+  fi
+  source "$_omp_comp_cache"
+  unset _omp_comp_cache _omp_bin
 fi

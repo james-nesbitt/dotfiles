@@ -11,6 +11,14 @@ export ZSH="$XDG_DATA_HOME/oh-my-zsh"
 export ZSH_COMPDUMP="$XDG_CACHE_HOME/zsh/zcompdump-$HOST-$ZSH_VERSION"
 mkdir -p "$XDG_CACHE_HOME/zsh"
 
+# /etc/profile.d/brew.sh (baked into the immutable OS image, not editable)
+# injects linuxbrew's zsh-completion dir into $fpath for every login shell.
+# It's owned by the system `linuxbrew` user (not root/us), so oh-my-zsh's
+# compaudit always flags it as insecure regardless of permission bits. We
+# don't use host linuxbrew — drop it from fpath before compinit scans it,
+# rather than disabling compaudit checks globally (ZSH_DISABLE_COMPFIX).
+fpath=(${fpath:#/home/linuxbrew/.linuxbrew/share/zsh*})
+
 # mise — activate early so mise-managed tools are on PATH for detection below
 if command -v mise &>/dev/null; then
   eval "$(mise activate zsh)"

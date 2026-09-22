@@ -1,7 +1,7 @@
 ---
 name: mirantis-services
-description: Access Mirantis internal services — JIRA, Confluence, Jenkins, GitLab, Harbor, Okta, GitHub, Aikido. Use when interacting with any Mirantis service API or when the user asks to query, create, or update resources in those systems.
-tags: [mirantis, jira, confluence, jenkins, gitlab, harbor, okta, github, aikido]
+description: Access Mirantis internal services — JIRA, Confluence, Jenkins, GitLab, Harbor, GitHub, Aikido. Use when interacting with any Mirantis service API or when the user asks to query, create, or update resources in those systems.
+tags: [mirantis, jira, confluence, jenkins, gitlab, harbor, github, aikido]
 ---
 
 # Mirantis Services
@@ -9,7 +9,13 @@ tags: [mirantis, jira, confluence, jenkins, gitlab, harbor, okta, github, aikido
 All Mirantis service credentials are stored in an encrypted `pass` store at
 `~/Documents/Mirantis/.password-store` (GPG key: `jnesbitt@mirantis.com`).
 Wrapper scripts in `~/Documents/Mirantis/bin/` handle authentication
-transparently — credentials never appear in command output or agent context.
+transparently — credentials never appear in command output or agent context,
+and never appear in process argv either: every wrapper passes credentials to
+`curl` via `-K -` (config read from stdin), not `--user`/`--header`/`--data`
+on the command line — those are readable by any co-resident process via
+`ps`/`/proc/<pid>/cmdline` for the life of the request. If you add a new
+wrapper or touch an existing one, keep this pattern (`_mlib_cfg_escape` in
+`_mirantis-lib.sh` escapes values for the config file).
 
 Invoke wrappers by **full path**. No PATH setup or environment exports are needed;
 `PASSWORD_STORE_DIR` is set inside the scripts automatically.
@@ -401,6 +407,104 @@ url: https://<registry-hostname>
 
 ---
 
+## Google Drive / Docs / Sheets
+
+Single OAuth client (your own Google identity). Wrapper: `~/Documents/Mirantis/bin/mirantis-google`
+
+The first argument is a **service selector**, not a path appended to a fixed
+base — same shape as `mirantis-jenkins <master>` / `mirantis-harbor
+<registry>` — because Drive, Docs and Sheets live on different hosts. Unlike
+Jenkins/Harbor there is one shared credential; the selector only picks the
+base URL from a small fixed lookup inside the wrapper. The bearer token is
+only ever sent to one of these three hosts, never to a caller-supplied URL:
+
+| Service  | Base URL |
+|---|---|
+| `drive`  | `https://www.googleapis.com/drive` |
+| `docs`   | `https://docs.googleapis.com` |
+| `sheets` | `https://sheets.googleapis.com` |
+
+Authentication is OAuth2 refresh_token grant against a Google Cloud "Desktop
+app" OAuth client registered under a project in the `mirantis.com` GCP
+organization, consent screen type **Internal** (Workspace-only, no Google
+verification required regardless of scope, no refresh-token expiry). The
+wrapper exchanges the stored refresh token for a short-lived access token on
+every invocation. Scopes granted when the refresh token was minted:
+`drive.readonly`, `documents.readonly`, `cloud-platform`, `openid`,
+`userinfo.email` — reads only; re-run the one-time consent flow with an
+expanded `--scopes` list (see below) to add write or Sheets scopes.
+
+```bash
+~/Documents/Mirantis/bin/mirantis-google <drive|docs|sheets> /API/PATH [curl-options...]
+```
+
+### Common operations
+
+```bash
+# Get a file/doc's metadata
+~/Documents/Mirantis/bin/mirantis-google drive '/v3/files/<id>?fields=name,mimeType,owners'
+
+# Export a Google Doc as plain text or Markdown (Drive export)
+~/Documents/Mirantis/bin/mirantis-google drive '/v3/files/<id>/export?mimeType=text/plain'
+~/Documents/Mirantis/bin/mirantis-google drive '/v3/files/<id>/export?mimeType=text/markdown'
+
+# Read a Doc via the native Docs API (structured JSON, full fidelity)
+~/Documents/Mirantis/bin/mirantis-google docs '/v1/documents/<id>'
+
+# List files in a Drive folder
+~/Documents/Mirantis/bin/mirantis-google drive "/v3/files?q='<folder-id>'+in+parents"
+
+# Read a Sheet's values
+~/Documents/Mirantis/bin/mirantis-google sheets '/v4/spreadsheets/<id>/values/Sheet1!A1:Z100'
+```
+
+### First-time setup / re-scoping
+
+1. Enable the needed APIs once per project: `gcloud services enable drive.googleapis.com docs.googleapis.com --project=<project>`.
+2. Create the OAuth consent screen (User Type: **Internal**) and an OAuth
+   client (Application type: **Desktop app**) at
+   `https://console.cloud.google.com/apis/credentials?project=<project>` —
+   no `gcloud` equivalent exists for this step, it is Console-only.
+3. Store the client id/secret:
+   ```bash
+   PASSWORD_STORE_DIR=~/Documents/Mirantis/.password-store pass insert --multiline mirantis/google
+   ```
+   Entry format (first line is the client secret at this stage, before a
+   refresh token exists):
+   ```
+   <client_secret>
+   client_id: <client_id>
+   url: https://oauth2.googleapis.com
+   ```
+4. Run the one-time consent flow through a custom client (the default
+   `gcloud` client is blocked from sensitive scopes like `drive.readonly`):
+   ```bash
+   python3 -c "import json; json.dump({'installed':{'client_id':'<client_id>','client_secret':'<client_secret>','auth_uri':'https://accounts.google.com/o/oauth2/auth','token_uri':'https://oauth2.googleapis.com/token','redirect_uris':['http://localhost']}}, open('/tmp/client_secret.json','w'))"
+   gcloud auth application-default login --client-id-file=/tmp/client_secret.json \
+     --scopes=openid,email,https://www.googleapis.com/auth/cloud-platform,https://www.googleapis.com/auth/drive.readonly,https://www.googleapis.com/auth/documents.readonly
+   ```
+   `cloud-platform` must always be included alongside any other scopes or
+   `gcloud` rejects the flag. This starts a loopback server and prints a
+   URL — visit it, sign in, consent; distrobox shares the host network
+   namespace so `http://localhost:<port>` resolves for the host browser too.
+5. Extract the refresh token gcloud just obtained and store the complete
+   entry (**do not** run `gcloud auth application-default revoke` after —
+   that revokes the refresh token server-side, not just the local cache):
+   ```bash
+   python3 -c "import json; print(json.load(open('$HOME/.config/gcloud/application_default_credentials.json'))['refresh_token'])"
+   PASSWORD_STORE_DIR=~/Documents/Mirantis/.password-store pass insert --multiline --force mirantis/google
+   ```
+   Final entry format:
+   ```
+   <refresh_token>
+   client_id: <client_id>
+   client_secret: <client_secret>
+   url: https://oauth2.googleapis.com
+   ```
+6. Delete `/tmp/client_secret.json` (contains the client secret in plaintext).
+
+---
+
 
 ## GitHub
 
@@ -415,21 +519,6 @@ gh api /repos/mirantis/<repo>/releases
 ```
 
 Use `gh auth status` to verify authentication state if a call fails.
-
----
-
-## Okta / VPN
-
-Wrapper: `~/Documents/Mirantis/bin/mirantis-okta`
-
-```bash
-# Connect to Mirantis VPN (interactive MFA prompt follows)
-~/Documents/Mirantis/bin/mirantis-okta vpn
-```
-
-`openconnect` must be installed (`sudo dnf install -y openconnect`).
-MFA push or TOTP is handled interactively by openconnect after the
-password is injected from pass.
 
 ---
 
@@ -448,7 +537,6 @@ PASSWORD_STORE_DIR=~/Documents/Mirantis/.password-store pass <subcommand>
 PASSWORD_STORE_DIR=~/Documents/Mirantis/.password-store pass edit mirantis/jira
 PASSWORD_STORE_DIR=~/Documents/Mirantis/.password-store pass edit mirantis/confluence
 PASSWORD_STORE_DIR=~/Documents/Mirantis/.password-store pass edit mirantis/gitlab
-PASSWORD_STORE_DIR=~/Documents/Mirantis/.password-store pass edit mirantis/okta
 PASSWORD_STORE_DIR=~/Documents/Mirantis/.password-store pass edit mirantis/jenkins/tools
 PASSWORD_STORE_DIR=~/Documents/Mirantis/.password-store pass edit mirantis/harbor/<registry-name>
 PASSWORD_STORE_DIR=~/Documents/Mirantis/.password-store pass edit mirantis/aikido
@@ -476,7 +564,6 @@ url: https://<service>.mirantis.com
 ```
 
 Jenkins entries use `username: jnesbitt` (short form, no domain).
-Okta entries use `vpn-host:` and optionally `vpn-authgroup:` instead of `url:`.
 
 ---
 

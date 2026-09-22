@@ -72,11 +72,6 @@ if [ -d "$XDG_DATA_HOME/mise/installs/terraform" ] || command -v terraform &>/de
   available_plugins+=(terraform)
 fi
 
-# Ollama
-if [ -d "$XDG_DATA_HOME/ollama" ] || command -v ollama &>/dev/null; then
-  export OLLAMA_MODELS="$XDG_DATA_HOME/ollama/models"
-fi
-
 # LM Studio
 if [ -d "$XDG_DATA_HOME/lmstudio" ]; then
   export LMSTUDIO_HOME="$XDG_DATA_HOME/lmstudio"
